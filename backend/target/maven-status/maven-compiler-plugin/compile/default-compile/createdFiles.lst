@@ -1,0 +1,6 @@
+com/alio/habit/AlioApplication.class
+com/alio/habit/exception/ResourceNotFoundException.class
+com/alio/habit/repository/HabitRepository.class
+com/alio/habit/controller/HabitController.class
+com/alio/habit/service/HabitService.class
+com/alio/habit/model/Habit.class
