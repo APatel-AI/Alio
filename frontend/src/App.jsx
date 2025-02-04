@@ -1,5 +1,6 @@
 import React from 'react';
 import HabitList from './components/HabitList';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
         </div>
       </header>
       <main>
+        <Toaster position="bottom-right" />
         <HabitList />
       </main>
     </div>

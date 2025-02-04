@@ -1,91 +1,100 @@
+// src/components/HabitList.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { format } from 'date-fns';
-import { Plus, Check, X } from 'lucide-react';
+import { format, isToday } from 'date-fns';
+import { Plus} from 'lucide-react';
+import HabitForm from './HabitForm';
+import HabitCard from './HabitCard';
+import { toast } from 'react-hot-toast';
 
 const HabitList = () => {
   const [habits, setHabits] = useState([]);
-  const [newHabit, setNewHabit] = useState('');
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+
   useEffect(() => {
     fetchHabits();
   }, []);
 
   const fetchHabits = async () => {
-    const response = await axios.get('http://localhost:8080/api/habits');
-    setHabits(response.data);
-  };
-
-  const createHabit = async (e) => {
-    e.preventDefault();
-    if (!newHabit.trim()) return;
-    
-    await axios.post('http://localhost:8080/api/habits', {
-      name: newHabit,
-      createdAt: new Date().toISOString()
-    });
-    
-    setNewHabit('');
-    fetchHabits();
+    try {
+      setIsLoading(true);
+      const response = await axios.get('http://localhost:8080/api/habits');
+      setHabits(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch habits');
+      console.error('Error fetching habits:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleHabit = async (habitId, date) => {
-    await axios.post(`http://localhost:8080/api/habits/${habitId}/toggle?date=${date}`);
-    fetchHabits();
+    try {
+      await axios.post(`http://localhost:8080/api/habits/${habitId}/toggle?date=${date}`);
+      fetchHabits();
+      toast.success('Habit updated');
+    } catch (error) {
+      toast.error('Failed to update habit');
+      console.error('Error toggling habit:', error);
+    }
   };
 
-  const getDatesForLastWeek = () => {
-    const dates = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      dates.push(format(date, 'yyyy-MM-dd'));
+  const handleCreateHabit = async (habitData) => {
+    try {
+      await axios.post('http://localhost:8080/api/habits', {
+        ...habitData,
+        createdAt: new Date().toISOString()
+      });
+      setShowForm(false);
+      fetchHabits();
+      toast.success('Habit created successfully');
+    } catch (error) {
+      toast.error('Failed to create habit');
+      console.error('Error creating habit:', error);
     }
-    return dates;
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Alio</h1>
-        
-        <form onSubmit={createHabit} className="mb-8 flex gap-4">
-          <input
-            type="text"
-            value={newHabit}
-            onChange={(e) => setNewHabit(e.target.value)}
-            placeholder="New habit..."
-            className="flex-1 bg-gray-800 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button type="submit" className="bg-blue-500 rounded px-4 py-2 hover:bg-blue-600">
-            <Plus size={20} />
+    <div className="min-h-screen bg-gray-900 text-gray-100">
+      <div className="max-w-4xl mx-auto p-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Alio</h1>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-blue-500 rounded-full p-2 hover:bg-blue-600 transition-colors"
+          >
+            <Plus size={24} />
           </button>
-        </form>
-
-        <div className="space-y-4">
-          {habits.map(habit => (
-            <div key={habit.id} className="bg-gray-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-medium">{habit.name}</h3>
-              </div>
-              <div className="grid grid-cols-7 gap-2">
-                {getDatesForLastWeek().map(date => {
-                  const isCompleted = habit.completedDates?.some(d => d === date);
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => toggleHabit(habit.id, date)}
-                      className={`p-2 rounded flex items-center justify-center
-                        ${isCompleted ? 'bg-green-500' : 'bg-gray-700'}`}
-                    >
-                      {isCompleted ? <Check size={16} /> : <X size={16} />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
         </div>
+
+        {showForm && (
+          <HabitForm
+            onSubmit={handleCreateHabit}
+            onCancel={() => setShowForm(false)}
+            existingHabits={habits}
+          />
+        )}
+
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        ) : habits.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            No habits yet. Click the + button to create one!
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {habits.map(habit => (
+              <HabitCard
+                key={habit.id}
+                habit={habit}
+                onToggle={toggleHabit}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

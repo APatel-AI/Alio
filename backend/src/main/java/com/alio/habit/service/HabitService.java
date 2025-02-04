@@ -16,11 +16,13 @@ public class HabitService {
     
     public Habit createHabit(Habit habit) {
         habit.setCreatedAt(LocalDateTime.now());
+        habit.setCurrentStreak(0);
+        habit.setLongestStreak(0);
         return habitRepository.save(habit);
     }
     
     public List<Habit> getAllHabits() {
-        return habitRepository.findByOrderByCreatedAtDesc();
+        return habitRepository.findByOrderByPriorityDescCreatedAtDesc();
     }
     
     public void toggleHabitCompletion(Long habitId, LocalDate date) {
@@ -30,10 +32,61 @@ public class HabitService {
         List<LocalDate> completedDates = habit.getCompletedDates();
         if (completedDates.contains(date)) {
             completedDates.remove(date);
+            updateStreakOnRemoval(habit, date);
         } else {
             completedDates.add(date);
+            updateStreakOnCompletion(habit, date);
         }
         
         habitRepository.save(habit);
+    }
+    
+    private void updateStreakOnCompletion(Habit habit, LocalDate date) {
+        LocalDate lastCompleted = habit.getLastCompletedDate();
+        if (lastCompleted == null || date.minusDays(1).equals(lastCompleted)) {
+            habit.setCurrentStreak(habit.getCurrentStreak() + 1);
+        } else if (date.isAfter(lastCompleted)) {
+            habit.setCurrentStreak(1);
+        }
+        
+        if (habit.getCurrentStreak() > habit.getLongestStreak()) {
+            habit.setLongestStreak(habit.getCurrentStreak());
+        }
+        
+        habit.setLastCompletedDate(date);
+    }
+    
+    private void updateStreakOnRemoval(Habit habit, LocalDate date) {
+        if (date.equals(habit.getLastCompletedDate())) {
+            LocalDate newLastCompleted = habit.getCompletedDates().stream()
+                .filter(d -> d.isBefore(date))
+                .max(LocalDate::compareTo)
+                .orElse(null);
+            
+            habit.setLastCompletedDate(newLastCompleted);
+            if (newLastCompleted == null) {
+                habit.setCurrentStreak(0);
+            } else {
+                calculateCurrentStreak(habit);
+            }
+        }
+    }
+    
+    private void calculateCurrentStreak(Habit habit) {
+        LocalDate lastDate = habit.getLastCompletedDate();
+        if (lastDate == null) {
+            habit.setCurrentStreak(0);
+            return;
+        }
+        
+        int streak = 1;
+        LocalDate currentDate = lastDate.minusDays(1);
+        
+        while (habit.getCompletedDates().contains(currentDate)) {
+            streak++;
+            currentDate = currentDate.minusDays(1);
+        }
+        
+        habit.setCurrentStreak(streak);
     }
 }

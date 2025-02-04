@@ -7,5 +7,7 @@ import java.util.List;
 
 @Repository
 public interface HabitRepository extends JpaRepository<Habit, Long> {
-    List<Habit> findByOrderByCreatedAtDesc();
+    List<Habit> findByOrderByPriorityDescCreatedAtDesc();
+    List<Habit> findByTriggerHabitId(Long triggerId);
+    List<Habit> findByCategory(String category);
 }
